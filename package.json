@@ -1,0 +1,38 @@
+{
+  "name": "parcel-plugin-import-maps",
+  "version": "0.1.0",
+  "description": "A plugin for Parcel to use import maps for microfrontends.",
+  "main": "index.js",
+  "typings": "index.d.ts",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/FlorianRappl/parcel-plugin-import-maps.git"
+  },
+  "bugs": {
+    "url": "https://github.com/FlorianRappl/parcel-plugin-import-maps/issues"
+  },
+  "engines": {
+    "node": ">=8.0.0"
+  },
+  "keywords": [
+    "parcel-plugin",
+    "parcel-bundler",
+    "plugin",
+    "bundler",
+    "import",
+    "maps",
+    "import-maps",
+    "peer",
+    "dependencies",
+    "optimize"
+  ],
+  "author": "Florian Rappl <mail@florian-rappl.de>",
+  "license": "MIT",
+  "devDependencies": {
+    "parcel-bundler": "1.x"
+  },
+  "dependencies": {}
+}
