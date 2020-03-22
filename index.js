@@ -1,4 +1,163 @@
+const { resolve, relative } = require("path");
+const { writeFileSync, mkdirSync, existsSync } = require("fs");
+
+function resolveImportMap(dir) {
+  const pckg = getPackageJson(dir);
+  const map = pckg.importmap;
+
+  if (typeof map === "string") {
+    const target = resolve(dir, map);
+
+    if (existsSync(target)) {
+      return require(target);
+    } else {
+      console.warn(
+        `Could not find the referenced import maps "${map}" from ${dir}. Skipping.`
+      );
+    }
+  } else if (typeof map === "object") {
+    return map;
+  }
+
+  return undefined;
+}
+
+function getPackageJson(dir) {
+  if (dir) {
+    const path = resolve(dir, "package.json");
+    return require(path);
+  }
+
+  return {};
+}
+
+function getPackageDir(dir) {
+  const path = resolve(dir, "package.json");
+
+  if (existsSync(path)) {
+    return dir;
+  }
+
+  const upper = resolve(dir, "..");
+
+  if (upper !== dir) {
+    return getPackageDir(upper);
+  }
+
+  return undefined;
+}
+
+function createFile(dir, name, content) {
+  const path = resolve(dir, `${name}.js`);
+  writeFileSync(path, content, "utf8");
+  return path;
+}
+
+function getImportFor(root, dir, file) {
+  if (!file.startsWith('http:') && !file.startsWith('https:')) {
+    const absPath = resolve(dir, file);
+    const relPath = relative(root, absPath);
+    return `import(${JSON.stringify(`/${relPath}`)})`;
+  } else {
+    return `new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open("GET", ${JSON.stringify(file)});
+      xhr.onreadystatechange = function() {
+        if (xhr.readyState === 4) {
+          if (xhr.status === 200) {
+            const result = {
+              exports: {},
+            };
+            const f = new Function('module', 'exports', 'require', xhr.responseText);
+            f(result, result.exports, require);
+            resolve(result.exports);
+          } else {
+            reject(xhr.statusText);
+          }
+        }
+      };
+      xhr.send();
+    })`;
+  }
+}
+
 module.exports = function(bundler) {
-  bundler.addAssetType("importmap", require.resolve("./ImportMapAsset"));
-  bundler.addPackager("importmap", require.resolve("./ImportMapPackager"));
+  const root = bundler.options.rootDir;
+  const dir = getPackageDir(root);
+  const map = resolveImportMap(dir);
+  const keys = Object.keys((map && map.imports) || {});
+
+  if (keys.length > 0) {
+    const modules = {};
+    const temp = resolve(__dirname, "_temp");
+    const resolver = bundler.resolver;
+    const gA = resolver.__proto__.getAlias;
+
+    if (!existsSync(temp)) {
+      mkdirSync(temp);
+    }
+
+    createFile(
+      temp,
+      "index",
+      `
+if (!window.__importMaps) {
+  const imports = [];
+  window.__importMaps = true;
+
+  window.__resolveImport = function (id) {
+    for (const item of imports) {
+      if (item.id === id) {
+        return item;
+      }
+    }
+
+    return {};
+  };
+
+  window.__registerImports = function (newImports) {
+    newImports.forEach(i => {
+      if (!imports.some(j => j.id === i.id)) {
+        const item = {
+          id: i.id,
+          data: undefined,
+        };
+        item.loading = i.load().then(data => (item.data = data), err => console.error(err));
+        imports.push(item);
+      }
+    });
+  };
+}
+
+window.__registerImports([${keys.map(id => `{
+  id: ${JSON.stringify(id)},
+  load: () => ${getImportFor(root, dir, map.imports[id])},
+}`).join(',')}]);
+
+module.exports = function (cb) {
+  Promise.all(${JSON.stringify(keys)}.map(id => window.__resolveImport(id).loading)).then(cb);
+};
+`
+    );
+
+    resolver.__proto__.getAlias = function(filename, dir, aliases) {
+      if (keys.includes(filename)) {
+        const m = modules[filename];
+
+        if (!m) {
+          return (modules[filename] = createFile(
+            temp,
+            Object.keys(modules).length.toString(),
+            `module.exports = window.__resolveImport(${JSON.stringify(
+              filename
+            )}).data;`
+          ));
+        }
+
+        return m;
+      }
+
+      return gA.call(resolver, filename, dir, aliases);
+    };
+  }
 };
