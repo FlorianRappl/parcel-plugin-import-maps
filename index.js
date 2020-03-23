@@ -53,11 +53,14 @@ function createFile(dir, name, content) {
   return path;
 }
 
+function getSourcePath(root, file) {
+  return `/${relative(root, file)}`;
+}
+
 function getImportFor(root, dir, file) {
   if (!file.startsWith('http:') && !file.startsWith('https:')) {
-    const absPath = resolve(dir, file);
-    const relPath = relative(root, absPath);
-    return `import(${JSON.stringify(`/${relPath}`)})`;
+    const path = getSourcePath(root, resolve(dir, file));
+    return `import(${JSON.stringify(path)})`;
   } else {
     return `new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest();
@@ -81,6 +84,8 @@ function getImportFor(root, dir, file) {
   }
 }
 
+let original;
+
 module.exports = function(bundler) {
   const root = bundler.options.rootDir;
   const dir = getPackageDir(root);
@@ -91,7 +96,7 @@ module.exports = function(bundler) {
     const modules = {};
     const temp = resolve(__dirname, "_temp");
     const resolver = bundler.resolver;
-    const gA = resolver.__proto__.getAlias;
+    const getAlias = original || (original = resolver.__proto__.getAlias);
 
     if (!existsSync(temp)) {
       mkdirSync(temp);
@@ -134,14 +139,17 @@ window.__registerImports([${keys.map(id => `{
   load: () => ${getImportFor(root, dir, map.imports[id])},
 }`).join(',')}]);
 
-module.exports = function (cb) {
-  Promise.all(${JSON.stringify(keys)}.map(id => window.__resolveImport(id).loading)).then(cb);
+exports.ready = function (id) {
+  const ids = Array.isArray(id) ? id : (id ? [id] : ${JSON.stringify(keys)});
+  return Promise.all(ids.map(id => window.__resolveImport(id).loading));
 };
 `
     );
 
     resolver.__proto__.getAlias = function(filename, dir, aliases) {
-      if (keys.includes(filename)) {
+      if (filename === 'importmap') {
+        return resolve(temp, 'index.js');
+      } else if (keys.includes(filename)) {
         const m = modules[filename];
 
         if (!m) {
@@ -157,7 +165,7 @@ module.exports = function (cb) {
         return m;
       }
 
-      return gA.call(resolver, filename, dir, aliases);
+      return getAlias.call(resolver, filename, dir, aliases);
     };
   }
 };

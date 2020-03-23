@@ -15,6 +15,8 @@ Install the plugin via npm:
 npm i parcel-plugin-import-maps
 ```
 
+### Declaring Import Maps
+
 You can now add a new key to your *package.json*: `importmap`. The key can either hold an `importmap` structure (see [specification](https://wicg.github.io/import-maps/)) or a reference to a valid JSON file holding the structure.
 
 Example for the containing the structure in the *package.json*:
@@ -76,6 +78,72 @@ Most importantly, the plugin allows you to place scripts from other locations ea
 ```
 
 For proper IDE (or even TypeScript) usage we still advise to install the respective package or at least its bindings locally.
+
+### Loading Import Maps
+
+The required import maps are loaded at startup *asynchronously*. Therefore, you'd need to wait before using them.
+
+Unfortunately, in the current version this cannot be done implicitly (reliably), even though its desired for the future.
+
+Right now the only way is to change code like (assumes `lodash` is used from an import map like above)
+
+```js
+//app.js
+import * as _ from 'lodash';
+
+const _ = require('lodash');
+
+export const partitions = _.partition([1, 2, 3, 4], n => n % 2);
+});
+```
+
+to be
+
+```js
+//app.js
+import { ready } from 'importmap';
+
+ready().then(() => {
+  const _ = require('lodash');
+  return {
+    partitions: _.partition([1, 2, 3, 4], n => n % 2),
+  };
+});
+```
+
+or, alternatively (more generically),
+
+```js
+//index.js
+import { ready } from 'importmap';
+
+module.exports = ready().then(() => require('./app'));
+
+//app.js
+import * as _ from 'lodash';
+
+const _ = require('lodash');
+
+export const partitions = _.partition([1, 2, 3, 4], n => n % 2);
+});
+```
+
+You could also trigger the loading already in the beginning, i.e.,
+
+```js
+//app.js
+import 'importmap';
+
+// ...
+//other.js
+import { ready } from 'importmap';
+
+ready('lodash').then(() => {
+  // either load or do something with require('lodash')
+});
+```
+
+where we use `ready` with a single argument to determine what package should have been loaded to proceed. This is the deferred loading approach. Alternatively, an array with multiple package identifiers can be passed in.
 
 ## Changelog
 
