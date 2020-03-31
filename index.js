@@ -57,9 +57,26 @@ function getSourcePath(root, file) {
   return `/${relative(root, file)}`;
 }
 
+function resolvePath(root, dir, file) {
+  if (file.startsWith('/')) {
+    return getSourcePath(root, `.${file}`);
+  } else {
+    return getSourcePath(root, resolve(dir, file));
+  }
+}
+
+function getHashFor(root, dir, file) {
+  if (!file.startsWith('http:') && !file.startsWith('https:')) {
+    const path = resolvePath(root, dir, file);
+    return `require.resolve(${JSON.stringify(path)})[0][0]`;
+  } else {
+    return JSON.stringify(file);
+  }
+}
+
 function getImportFor(root, dir, file) {
   if (!file.startsWith('http:') && !file.startsWith('https:')) {
-    const path = getSourcePath(root, resolve(dir, file));
+    const path = resolvePath(root, dir, file);
     return `import(${JSON.stringify(path)})`;
   } else {
     return `new Promise((resolve, reject) => {
@@ -134,15 +151,23 @@ if (!window.__importMaps) {
   };
 }
 
-window.__registerImports([${keys.map(id => `{
-  id: ${JSON.stringify(id)},
+const localImports = [${keys.map(id => `{
+  id: ${getHashFor(root, dir, map.imports[id])},
+  reference: ${JSON.stringify(id)},
   load: () => ${getImportFor(root, dir, map.imports[id])},
-}`).join(',')}]);
+}`).join(',')}];
+
+window.__registerImports(localImports);
 
 exports.ready = function (id) {
-  const ids = Array.isArray(id) ? id : (id ? [id] : ${JSON.stringify(keys)});
+  const ids = Array.isArray(id) ? id : (id ? [id] : localImports.map(i => i.id));
   return Promise.all(ids.map(id => window.__resolveImport(id).loading));
 };
+
+exports.resolve = function (reference) {
+  const [id] = localImports.filter(i => i.reference === reference).map(i => i.id);
+  return window.__resolveImport(id).data;
+}
 `
     );
 
@@ -156,9 +181,7 @@ exports.ready = function (id) {
           return (modules[filename] = createFile(
             temp,
             Object.keys(modules).length.toString(),
-            `module.exports = window.__resolveImport(${JSON.stringify(
-              filename
-            )}).data;`
+            `module.exports = require('importmap').resolve(${JSON.stringify(filename)})`,
           ));
         }
 
