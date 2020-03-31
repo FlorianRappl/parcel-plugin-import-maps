@@ -12,7 +12,7 @@ Parcel plugin for declaring / using import maps. These externals will not be bun
 Install the plugin via npm:
 
 ```sh
-npm i parcel-plugin-import-maps
+npm i parcel-plugin-import-maps --save-dev
 ```
 
 ### Declaring Import Maps
@@ -101,9 +101,7 @@ to be
 
 ```js
 //app.js
-import { ready } from 'importmap';
-
-ready().then(() => {
+require('importmap').ready().then(() => {
   const _ = require('lodash');
   return {
     partitions: _.partition([1, 2, 3, 4], n => n % 2),
@@ -115,9 +113,7 @@ or, alternatively (more generically),
 
 ```js
 //index.js
-import { ready } from 'importmap';
-
-module.exports = ready().then(() => require('./app'));
+module.exports = require('importmap').ready().then(() => require('./app'));
 
 //app.js
 import * as _ from 'lodash';
@@ -132,13 +128,11 @@ You could also trigger the loading already in the beginning, i.e.,
 
 ```js
 //app.js
-import 'importmap';
+require('importmap');
 
 // ...
 //other.js
-import { ready } from 'importmap';
-
-ready('lodash').then(() => {
+require('importmap').ready('lodash').then(() => {
   // either load or do something with require('lodash')
 });
 ```
