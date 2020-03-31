@@ -1,6 +1,6 @@
 {
   "name": "parcel-plugin-import-maps",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "A plugin for Parcel to use import maps for microfrontends.",
   "main": "index.js",
   "typings": "index.d.ts",

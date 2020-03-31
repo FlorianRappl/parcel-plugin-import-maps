@@ -1,5 +1,11 @@
 # parcel-plugin-import-maps Changelog
 
+## 0.3.0
+
+- Improved module resolution
+- Improved sharing information
+- Fixed documentation issues
+
 ## 0.2.0
 
 - Implemented support for URLs

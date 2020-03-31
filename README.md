@@ -32,7 +32,7 @@ Example for the containing the structure in the *package.json*:
   "importmap": {
     "imports": {
       "/app/helper": "node_modules/helper/index.mjs",
-      "lodash": "/node_modules/lodash-es/lodash.js"
+      "lodash": "./node_modules/lodash-es/lodash.js"
     }
   }
 }
@@ -58,7 +58,7 @@ where the *my-imports.json* looks like
 {
   "imports": {
     "/app/helper": "node_modules/helper/index.mjs",
-    "lodash": "/node_modules/lodash-es/lodash.js"
+    "lodash": "./node_modules/lodash-es/lodash.js"
   }
 }
 ```
