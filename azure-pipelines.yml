@@ -27,13 +27,17 @@ steps:
   displayName: 'Preview version'
   condition: and(succeeded(), ne(variables['Build.SourceBranch'], 'refs/heads/master'))
 
-- script: |
-    npm pack
-  displayName: 'npm pack'
+- task: Npm@1
+  inputs:
+    command: custom
+    customCommand: publish --tag next
+    customEndpoint: 'npm_registry'
+  displayName: 'Publish Pre-Package'
+  condition: and(succeeded(), ne(variables['Build.SourceBranch'], 'refs/heads/master'))
 
 - task: Npm@1
   inputs:
     command: publish
     publishEndpoint: 'npm_registry'
-  displayName: 'Publish package'
-  condition: and(succeeded(), in(variables['Build.SourceBranch'], 'refs/heads/master', 'refs/heads/develop'))
+  displayName: 'Publish Package'
+  condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/master'))
