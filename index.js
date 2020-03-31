@@ -153,20 +153,24 @@ if (!window.__importMaps) {
 
 const localImports = [${keys.map(id => `{
   id: ${getHashFor(root, dir, map.imports[id])},
-  reference: ${JSON.stringify(id)},
+  ref: ${JSON.stringify(id)},
   load: () => ${getImportFor(root, dir, map.imports[id])},
 }`).join(',')}];
 
 window.__registerImports(localImports);
 
-exports.ready = function (id) {
-  const ids = Array.isArray(id) ? id : (id ? [id] : localImports.map(i => i.id));
-  return Promise.all(ids.map(id => window.__resolveImport(id).loading));
+function getId(ref) {
+  const [id] = localImports.filter(i => i.ref === ref).map(i => i.id);
+  return id;
+}
+
+exports.ready = function (ref) {
+  const refs = Array.isArray(ref) ? ref : (ref ? [ref] : localImports.map(i => i.ref));
+  return Promise.all(refs.map(ref => window.__resolveImport(getId(ref)).loading));
 };
 
-exports.resolve = function (reference) {
-  const [id] = localImports.filter(i => i.reference === reference).map(i => i.id);
-  return window.__resolveImport(id).data;
+exports.resolve = function (ref) {
+  return window.__resolveImport(getId(ref)).data;
 }
 `
     );

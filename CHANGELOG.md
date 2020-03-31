@@ -1,5 +1,9 @@
 # parcel-plugin-import-maps Changelog
 
+## 0.3.1
+
+- Fixed `ready` arguments
+
 ## 0.3.0
 
 - Improved module resolution
